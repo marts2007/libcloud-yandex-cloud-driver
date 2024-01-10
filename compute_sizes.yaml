@@ -1,0 +1,49 @@
+compute_node_sizes:
+  # Intel Ice Lake
+  - name: v3-standard-4
+    platform_id: standard-v3
+    cores: 4
+    memory: 8
+
+  - name: v3-standard-8
+    platform_id: standard-v3
+    cores: 8
+    memory: 16
+
+  - name: v3-standard-16
+    platform_id: standard-v3
+    cores: 16
+    memory: 32
+
+
+  # Intel Cascade Lake
+  - name: v2-standard-4
+    platform_id: standard-v2
+    cores: 4
+    memory: 8
+
+  - name: v2-standard-8
+    platform_id: standard-v2
+    cores: 8
+    memory: 16
+
+  - name: v2-standard-16
+    platform_id: standard-v2
+    cores: 16
+    memory: 32
+
+# Intel Broadwell
+  - name: v1-standard-4
+    platform_id: standard-v1
+    cores: 4
+    memory: 8
+
+  - name: v1-standard-8
+    platform_id: standard-v1
+    cores: 8
+    memory: 16
+
+  - name: v1-standard-16
+    platform_id: standard-v1
+    cores: 16
+    memory: 32

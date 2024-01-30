@@ -3,6 +3,8 @@ import os
 import grpc
 import json
 
+from google.protobuf import field_mask_pb2
+
 import yandexcloud
 
 from yandex.cloud.compute.v1.instance_service_pb2_grpc \
@@ -18,6 +20,9 @@ from yandex.cloud.compute.v1.image_service_pb2 import (
      )
 from yandex.cloud.vpc.v1.address_service_pb2 import (
     CreateAddressRequest,
+    UpdateAddressRequest,
+    UpdateAddressMetadata,
+    GetAddressByValueRequest,
     ExternalIpv4AddressSpec,
     CreateAddressMetadata,
     ListAddressesRequest
@@ -39,6 +44,10 @@ from yandex.cloud.compute.v1.instance_service_pb2 import (
     DeleteInstanceMetadata
 )
 
+class YaCloudException(Exception):
+    def __int__(self, message):
+        self.message = message
+        super().__init__(self.message)
 
 class YandexCloudApi:
     auth_key_path=None
@@ -68,7 +77,7 @@ class YandexCloudApi:
         ))
         return result
 
-    def create_image(self, folder_id, image_url):
+    def create_image(self, folder_id, image_url) -> Image:
         result = self.sdk.create_operation_and_get_result(
             CreateImageRequest(
                 folder_id=folder_id,
@@ -79,14 +88,17 @@ class YandexCloudApi:
             method_name="Create",
             meta_type=CreateImageRequest
         )
-        return result
+        result_type = type(result.response)
+        if result_type != Image:
+            raise YaCloudException("Error creating custom image")
+        return result.response
 
-    def create_address(self, folder_id: str):
+    def create_address(self, folder_id: str, zone_id: str = "ru-central1-a") -> Address:
         result = self.sdk.create_operation_and_get_result(
             CreateAddressRequest(
                 folder_id=folder_id,
                 external_ipv4_address_spec=ExternalIpv4AddressSpec(
-                    zone_id="ru-central1-a"
+                    zone_id=zone_id
                 )
             ),
             service=AddressServiceStub,
@@ -94,14 +106,49 @@ class YandexCloudApi:
             meta_type=CreateAddressMetadata,
             response_type=Address
         )
-        return result
+        result_type = type(result.response)
+        if result_type != Address:
+            raise YaCloudException("Error creating address")
+        return result.response
+
+    def update_address(self,address_id: str, reserved: bool = None) -> Address:
+        if reserved == True:
+            updated_address = Address(reserved=True)
+            mask = field_mask_pb2.FieldMask()
+            mask.paths.append("reserved")
+            result = self.sdk.create_operation_and_get_result(
+                UpdateAddressRequest(
+                    address_id=address_id,
+                    update_mask=mask,
+                    reserved=True
+                ),
+            service=AddressServiceStub,
+            method_name="Update",
+            meta_type=UpdateAddressMetadata,
+            response_type=Address
+            )
+        result_type = type(result.response)
+        if result_type != Address:
+            raise  YaCloudException("Error updating address")
+        return result.response
 
     def list_address(self, folder_id: str):
         address_service = self.sdk.client(AddressServiceStub)
-        result = address_service.List(ListAddressesRequest(
+        response = address_service.List(ListAddressesRequest(
             folder_id=folder_id,
         ))
-        return result
+        return response
+
+    def get_address_by_value(self,ipv4_address: str) -> Address:
+        address_service = self.sdk.client(AddressServiceStub)
+        response = address_service.GetByValue(GetAddressByValueRequest(
+            external_ipv4_address=ipv4_address
+        ))
+        response_type = type(response)
+        if response_type != Address:
+            raise YaCloudException("Error fetching address")
+        return response
+
 
     def create_instance(self,
                         folder_id: str,
@@ -113,7 +160,8 @@ class YandexCloudApi:
                         name: str = None,
                         description: str = None,
                         ssh_key: str = None
-                        ):
+                        ) -> Instance:
+
         result = self.sdk.create_operation_and_get_result(
             CreateInstanceRequest(
                 folder_id=folder_id,
@@ -142,7 +190,10 @@ class YandexCloudApi:
             meta_type=CreateInstanceMetadata,
             method_name="Create"
         )
-        return result
+        result_type = type(result.response)
+        if result_type != Instance:
+            raise  YaCloudException("Error creating VM")
+        return result.response
 
     def delete_instance(self, instance_id):
         result = self.sdk.create_operation_and_get_result(
@@ -154,3 +205,4 @@ class YandexCloudApi:
             meta_type=DeleteInstanceMetadata,
         )
         return result
+

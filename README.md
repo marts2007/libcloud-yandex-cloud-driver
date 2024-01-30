@@ -45,17 +45,21 @@ size = sizes[0]  # same with the node size
 # if you would like to have a ssh access to the Node - add auth parameter with your public_key
 auth = NodeAuthSSHKey('ssh-rsa key here')
 
+disk_size = ceil(40 * 1074 * 1000000 / 4194304) * 4194304  # 40 GiB
+
 result = client.create_node(
-    name="mynodetestnode",
+    name="mynodetestnode", # str required
     size=sizes[0],
     image=images[0],
-    auth=auth
+    auth=auth,
+    create_static_ip=False, # bool, optional, If set to True Ip Address entity would no be automatically deleted with VM
+    boot_disk_size=disk_size # disk size bytes, optional by default it receives the value from the image object
 )
+
 print(result)
 nodes = client.list_nodes()
 print(nodes)
 
 # client.destroy_node(node=result)
-
 
 ```

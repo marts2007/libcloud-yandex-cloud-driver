@@ -45,6 +45,7 @@ class YandexNodeDriver(NodeDriver):
     zone_id = None
     key = None
     api = None
+    features = {"create_node": ["ssh_key"]}
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -109,12 +110,15 @@ class YandexNodeDriver(NodeDriver):
         image,  # type: NodeImage,
         location=None,  # type: Optional[NodeLocation]
         auth=None,  # type: Optional[T_Auth],
+        boot_disk_size: float = None,
+        create_static_ip: bool = False
+
     ):
-        # type: (...) -> Node
-        ssh_key=None
-        if isinstance(auth,NodeAuthSSHKey):
+        #  type Node
+        ssh_key = None
+        if isinstance(auth, NodeAuthSSHKey):
             ssh_key = auth.pubkey
-        result = self.api.create_instance(
+        new_node = self.api.create_instance(
             name=name,
             folder_id=self.folder_id,
             platform_id=size.extra.get('platform_id', 'standard-v3'),
@@ -126,7 +130,7 @@ class YandexNodeDriver(NodeDriver):
             boot_disk_spec=AttachedDiskSpec(
                 auto_delete=True,
                 disk_spec=AttachedDiskSpec.DiskSpec(
-                    size=image.extra.get('min_disk_size','20971520000'),
+                    size=boot_disk_size if boot_disk_size else image.extra.get('min_disk_size','20971520000'),
                     image_id=image.id
                 )
             ),
@@ -134,7 +138,12 @@ class YandexNodeDriver(NodeDriver):
             zone_id=self.zone_id,
             ssh_key = ssh_key
         )
-        return self._to_node(result.response)
+        node =  self._to_node(new_node)
+        if create_static_ip:
+            # we need to get a current address ID
+            address_spec = self.api.get_address_by_value(node.public_ips[0])
+            self.api.update_address(address_spec.id, reserved=True)
+        return node
 
     def destroy_node(self, node: Node):
         return self.api.delete_instance(node.id)
